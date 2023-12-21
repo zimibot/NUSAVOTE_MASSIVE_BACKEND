@@ -5,21 +5,15 @@ const validateToken = require('../../middleware/ValidateToken')
 const ValidateQuestions = require('../../model/Validate/ValidateQuestions');
 const ModelStage = require('../../model/Database/ModelStage');
 const ModelQuestion = require('../../model/Database/ModelQuestion');
+const validateAdmin = require('../../middleware/validateAdmin')
+
 // Rute utama /users
-routes.get('/', validateToken, async (req, res) => {
+routes.get('/:id', validateToken, validateAdmin, async (req, res) => {
     // Menampilkan daftar semua user
     try {
-        const id = req.query.stageId
+        const stage_id = req.params.id
 
-        if (!id) {
-            return ResAPi.Unauthorized(res, "query stageId Required!")
-        }
-
-        const items = await ModelQuestion.find({ stageId: id })
-
-        if (!items) {
-            return ResAPi.Unauthorized(res, "Questions Tidak ditemukan")
-        }
+        const items = await ModelQuestion.find({ stage_id })
 
         return ResAPi.Success(res, "Success", items)
 
@@ -27,18 +21,39 @@ routes.get('/', validateToken, async (req, res) => {
         return ResAPi.Unauthorized()
     }
 });
-routes.put('/edit', validateToken, ValidateQuestions, async (req, res) => {
+routes.get('/id/:id', validateToken, validateAdmin, async (req, res) => {
     // Menampilkan daftar semua user
     try {
-        const id = req.query.id
-        const body = req.body
+        const id = req.params.id
 
-        if (!id) {
-            return ResAPi.Unauthorized(res, "query id Required!")
-        }
+        const items = await ModelQuestion.findById(id)
 
+        return ResAPi.Success(res, "Success", items)
+
+    } catch (error) {
+        return ResAPi.Unauthorized()
+    }
+});
+routes.delete('/:id/:id_stage/delete', validateToken, validateAdmin, async (req, res) => {
+    // Menampilkan daftar semua user
+    try {
+        const id = req.params.id
+        const id_stage = req.params.id_stage
+        await ModelStage.findByIdAndUpdate(id_stage, { $inc: { soal: -1 } });
+        await ModelQuestion.findByIdAndDelete(id)
+        return ResAPi.Success(res, "Success Delete")
+
+    } catch (error) {
+        return ResAPi.Unauthorized()
+    }
+});
+routes.put('/:id/edit', validateToken, validateAdmin, async (req, res) => {
+    // Menampilkan daftar semua user
+    try {
+        const id = req.params.id
+        const data = req.body
         const items = await ModelQuestion.findByIdAndUpdate(id, {
-            $set: body
+            $set: data
         })
 
         return ResAPi.Success(res, "Success", items)
@@ -47,43 +62,24 @@ routes.put('/edit', validateToken, ValidateQuestions, async (req, res) => {
         return ResAPi.Unauthorized()
     }
 });
-routes.delete('/delete', validateToken, ValidateQuestions, async (req, res) => {
-    // Menampilkan daftar semua user
-    try {
-        const id = req.query.id
 
-        if (!id) {
-            return ResAPi.Unauthorized(res, "query id Required!")
-        }
-
-        const items = await ModelQuestion.findByIdAndDelete(id)
-
-        return ResAPi.Success(res, "Success", items)
-
-    } catch (error) {
-        return ResAPi.Unauthorized()
-    }
-});
 // Rute untuk mengirimkan data tambah user
-routes.post('/create', validateToken, ValidateQuestions, async (req, res) => {
+routes.post('/create', validateToken, validateAdmin, ValidateQuestions, async (req, res) => {
     // Menyimpan user baru ke database
     try {
 
         const data = req.body;
-        const question = new ModelQuestion({
-            stage: data.stageId,
-            content: data.content,
-            choice: data.choice,
-            correctAnswer: data.correctAnswer,
-            score: data.score
-        });
+        const find = await ModelQuestion.findOne({ title: data.title, stage_id: data.stage_id })
+        await ModelStage.findByIdAndUpdate(data.stage_id, { $inc: { soal: 1 } });
+        if (find) {
+            return ResAPi.ErrorCreate(res, "Question Sudah Pernah Dibuat.")
+        }
+        const question = new ModelQuestion(data);
 
-        const savedQuestion = await question.save();
+        await question.save();
 
         // Menambahkan question ke stage
-        const stage = await ModelStage.findById(req.body.stageId);
-        stage.questions.push(savedQuestion._id);
-        await stage.save();
+
         return ResAPi.SuccessCreate(res)
     } catch (error) {
         if (error.code === 11000) {

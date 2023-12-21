@@ -1,46 +1,47 @@
 const jwt = require("jsonwebtoken");
 const resApi = require("./CodeResponse");
-const UserModel = require("../model/Database/ModelUser")
+const UserModel = require("../model/Database/ModelUser");
+
 const validate = (req, res, next) => {
+    const jwtSecret = "12*(4124__A--==++as,MJ";
 
-    const tokenHeader = req.headers.auth;
-    jwt.verify(tokenHeader, "c!a898waPL(*(*&sad>?:L&^^^^%$", async (err, decoded) => {
+    const tokenHeader = req.headers.authorization;
+
+    if (!tokenHeader) {
+        // No token provided
+        return resApi.Unauthorized(res, "No token provided");
+    }
+
+    jwt.verify(tokenHeader, jwtSecret, async (err, decoded) => {
+        console.log(decoded)
         if (err) {
-
-            // Token tidak valid atau telah kedaluwarsa
-            return resApi.Unauthorized(res)
+            if (err.name === 'TokenExpiredError') {
+                // Token has expired
+                return resApi.Unauthorized(res, "Token Expired");
+            } else if (err.name === 'JsonWebTokenError') {
+                // Token is invalid
+                return resApi.Unauthorized(res, "Invalid Token");
+            } else {
+                // Other JWT-related error
+                return resApi.Unauthorized(res, "Authentication Failed");
+            }
         } else {
-            const modelUser = await UserModel.findById(decoded.id)
+            try {
+                const modelUser = await UserModel.findById(decoded.id);
+                if (!modelUser) {
+                    return resApi.Unauthorized(res, "User not found");
+                }
 
-            const token = tokenHeader?.split(' ')[1] || tokenHeader;
+                let { fullname, _id, username, date_birth, roles } = modelUser;
 
-
-
-            if (modelUser?.token !== token) {
-                return resApi.Unauthorized(res, "Token Expired")
+                req.userData = { fullname, _id, username, date_birth, roles };
+                next();
+            } catch (error) {
+                // Handle database or other errors
+                return resApi.InternalServerError(res);
             }
-
-            let {
-                fullname,
-                _id,
-                username,
-                date_birth,
-                roles
-            } = modelUser
-
-            req.userData = {
-                fullname,
-                _id,
-                username,
-                date_birth,
-                roles
-            }
-            next();
         }
     });
+};
 
-    // Jika data valid, lanjutkan ke middleware atau handler selanjutnya
-
-}
-
-module.exports = validate
+module.exports = validate;

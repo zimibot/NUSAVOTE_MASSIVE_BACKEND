@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 
 const categorySchema = new mongoose.Schema({
-    name: String,
-    stages: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Unit' }]
+    name: { type: String, require: true, unique: true },
+    unit: { type: Number, default: 0 }
 });
 
 module.exports = mongoose.model('Category', categorySchema);

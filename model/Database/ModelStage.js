@@ -3,9 +3,13 @@ const mongoose = require('mongoose');
 
 
 const stageSchema = new mongoose.Schema({
-    name_stage: { type: String, require: true, unique: true },
-    question_id: { type: String, require: true, unique: true },
-    questions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Question' }],
+    stage: { type: String, require: true },
+    description: { type: String, require: true },
+    unit_id: { type: String, require: true },
+    category_id: { type: String, require: true },
+    soal:{type: Number, default: 0}
 });
+
+
 
 module.exports = mongoose.model('Stage', stageSchema);

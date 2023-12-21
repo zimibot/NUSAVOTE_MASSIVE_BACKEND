@@ -7,10 +7,12 @@ const routes = express.Router();
 const ModelUser = require("../model/Database/ModelUser");
 const resApi = require('../middleware/CodeResponse');
 const validateUser = require('../model/Validate/ValidateLogin');
-const validate = require('../middleware/Validate');
 const validateToken = require("../middleware/ValidateToken")
 const argon2 = require('argon2');
 var jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
+
+const client = new OAuth2Client("437848951156-k83vfrl0kn8ousfv70bdai674fdiu6uf.apps.googleusercontent.com", "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");
 
 // Rute utama /users
 routes.get('/', (req, res) => {
@@ -25,47 +27,104 @@ routes.get('/detail', validateToken, async (req, res) => {
 
     return resApi.Success(res, "Success", items)
 });
+routes.put('/:id/update', validateToken, async (req, res) => {
+    // Menampilkan form tambah user
+    const items = req.params.id
+    const body = req.body
 
-// Rute untuk mengirimkan data tambah user
-routes.post('/auth/login', validateUser, validate, async (req, res) => {
-    // Menyimpan user baru ke database
+    const hashedPassword = await argon2.hash(body.password);
+
+    await ModelUser.findByIdAndUpdate(items._id, {
+        $set: {
+            ...body,
+            password: hashedPassword
+        }
+    })
+
+    return resApi.Success(res, "Berhasil Mengupdate password", items)
+});
+routes.put('/create-password', validateToken, async (req, res) => {
+    // Menampilkan form tambah user
+    const items = req.userData
+    const body = req.body
+
+    const hashedPassword = await argon2.hash(body.password);
+
+    await ModelUser.findByIdAndUpdate(items._id, {
+        $set: {
+            password: hashedPassword
+        }
+    })
+
+    return resApi.Success(res, "Berhasil Mengupdate password", items)
+});
+
+const jwtSecret = "12*(4124__A--==++as,MJ";
+const redirectUri = 'http://localhost:5173'; // Sesuaikan dengan redirect URI Anda
+const audienceId = "437848951156-k83vfrl0kn8ousfv70bdai674fdiu6uf.apps.googleusercontent.com";
+
+const generateJwtToken = (userId) => jwt.sign({ id: userId }, jwtSecret, { expiresIn: '7h' });
+
+routes.post('/auth/google-auth', async (req, res) => {
+    const { code, regis } = req.body;
+
+    // Validasi input di sini (opsional)
+
     try {
-        const user = await ModelUser.findOne({ username: req.body.username })
-        const verif = await argon2.verify(user.password, req.body.password)
+        const { tokens } = await client.getToken({ code, redirect_uri: redirectUri });
+        client.setCredentials(tokens);
+
+        const ticket = await client.verifyIdToken({
+            idToken: tokens.id_token,
+            audience: audienceId
+        });
+        const payload = ticket.getPayload();
+
+        let user = await ModelUser.findOne({ email: payload.email });
+
+        if (!user && regis) {
+
+            user = new ModelUser({ ...payload, fullname: payload.name, username: payload?.name?.replace(" ", "_").toLowerCase() });
+            await user.save();
+        }
 
         if (!user) {
-            return resApi.Unauthorized(res, "User Tidak ditemukan")
+            return res.status(401).send("User tidak ditemukan.");
         }
 
-        if (!verif) {
-            return resApi.Unauthorized(res, "Password salah")
-        }
+        if (regis) {
+            const findUser = await ModelUser.findOne({ email: payload.email })
 
-
-        var dataToken = jwt.sign({
-            username: user.username,
-            fullname: user.fullname,
-            id: user._id,
-            roles: user.roles,
-            date_birth: user.date_birth
-        }, "c!a898waPL(*(*&sad>?:L&^^^^%$", { expiresIn: '1h' });
-
-
-        await ModelUser.updateOne({ username: req.body.username }, {
-            $set: {
-                token: dataToken
+            if (findUser) {
+                return res.status(401).send("User Sudah pernah di buat.");
             }
-        })
+        }
 
-
-
-        return resApi.Success(res, dataToken)
+        const jwtToken = generateJwtToken(user._id);
+        return res.status(user ? 201 : 291).json({ token: jwtToken });
 
     } catch (error) {
-        console.log(error)
-        return resApi.Unauthorized(res)
+        console.error(error);
+        res.status(500).send('Internal Server Error');
     }
+});
 
+// Rute untuk mengirimkan data tambah user
+routes.post('/auth/login', validateUser, async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const user = await ModelUser.findOne({ email });
+
+        if (!user || !(await argon2.verify(user.password, password))) {
+            return res.status(401).send("Invalid email or password");
+        }
+
+        const jwtToken = jwt.sign({ id: user._id }, "12*(4124__A--==++as,MJ", { expiresIn: '7h' });
+        res.status(201).json({ token: jwtToken });
+    } catch (error) {
+        console.log(error)
+        res.status(500).send("Error during traditional login");
+    }
 });
 
 // // Rute untuk menampilkan detail user berdasarkan ID

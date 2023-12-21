@@ -1,8 +1,8 @@
 const { body } = require('express-validator');
 
 const validate = [
-    body('name').notEmpty().withMessage('Name diperlukan.'),
-    body('category').notEmpty().withMessage('category diperlukan.'),
+    body('unit').notEmpty().withMessage('Name diperlukan.'),
+    body('category_id').notEmpty().withMessage('category diperlukan.'),
 ];
 
 

@@ -17,21 +17,21 @@ routes.get('/', async (req, res) => {
 routes.post('/create', validateRegister, validate, async (req, res) => {
     // Menyimpan user baru ke database
     try {
+
         let data = req.body
 
         const hashedPassword = await argon2.hash(data.password);
+        const findUser = await ModelUser.findOne({ username: data.username, email: data.email })
 
+        if (findUser) {
+            return resApi.ErrorCreate(res, "User Sudah Pernah Dibuat.")
+        }
         data = {
             ...data,
             password: hashedPassword
         }
-
-
         const user = new ModelUser(data)
-
-
         await user.save()
-
         return ResAPi.SuccessCreate(res)
     } catch (error) {
         if (error.code === 11000) {

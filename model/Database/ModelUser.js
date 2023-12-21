@@ -5,10 +5,12 @@ const schema = new mongoose.Schema({
   date: { type: Date, default: Date.now },
   fullname: { type: String, required: true },
   username: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
+  password: { type: String },
+  email: { type: String, required: true },
   date_birth: { type: Date, require: true },
   token: { type: String, require: true },
-  roles: { type: String, require: true },
+  roles: { type: String, require: true, default: "user" },
+  googleId: { type: String }
 });
 
 // Create the User model

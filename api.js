@@ -6,6 +6,8 @@ const RouteUser = require("./routes/RouteUser")
 const RouteRegister = require("./routes/RouteRegister")
 const RouteCategory = require("./routes/Admin/RoutesCategory")
 const RouteStage = require("./routes/Admin/RoutesStage")
+const RouteUnit = require("./routes/Admin/RoutesUnit")
+const RouteUserList = require("./routes/Admin/RouteUser")
 const RouteQuestions = require("./routes/Admin/RoutesQuestions")
 const RouteUserAnsware = require("./routes/Users/RoutesUserAnsware")
 const mongoURL = 'mongodb://0.0.0.0:27017/web-daerah';
@@ -64,8 +66,10 @@ const swaggerOptions = {
 
 app.use('/users', RouteUser);
 app.use('/register', RouteRegister);
+app.use('/admin/user', RouteUserList);
 app.use('/admin/category', RouteCategory);
 app.use('/admin/stage', RouteStage);
+app.use('/admin/unit', RouteUnit);
 app.use('/admin/questions', RouteQuestions);
 
 app.use('/users/answare', RouteUserAnsware);

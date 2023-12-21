@@ -1,10 +1,11 @@
 const mongoose = require('mongoose');
 
-const categorySchema = new mongoose.Schema({
-    name: { type: String, require: true, unique: true },
-    content: { type: String, require: true },
-    guide: { type: String, require: true },
-    stages: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Stage' }]
+const unitSchema = new mongoose.Schema({
+    unit: { type: String, require: true },
+    category_id: { type: String, require: true },
+    description: { type: String, require: true },
+    guidebook: { type: String, require: true },
+    stages: { type: Number, default: 0 }
 });
 
-module.exports = mongoose.model('Unit', categorySchema);
+module.exports = mongoose.model('Unit', unitSchema);
